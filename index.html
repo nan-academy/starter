@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Starter</title>
+  <meta property="og:title" content="Starter" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="description" content="A starter pack of JS exercises" />
+  <meta property="og:description" content="A starter pack of JS exercises" />
+  <link rel="canonical" href="https://nan-academy.github.io/starter/" />
+  <meta property="og:url" content="https://nan-academy.github.io/starter/" />
+  <meta property="og:site_name" content="starter" />
+  <meta name="twitter:card" content="summary" />
+  <meta property="twitter:title" content="Init" />
+  <script type="application/ld+json">
+      { "@type": "WebPage", "url": "https://nan-academy.github.io/starter/", "headline": "Starter", "description": "A starter pack of JS exercises", "@context": "https://schema.org" }
+  </script>
+  <link rel="stylesheet" href="codemirror.css" />
+  <link rel="stylesheet" href="https://nan-academy.github.io/starter/assets/css/style.css?v=a50420b7f2e2e412fdfc7abe65e27eb12ac1676c" />
+  <style id="root-style">
+    body { padding-bottom: 40em }
+    #container h2 { margin-top: 96px }
+    #container .cm-s-neo.CodeMirror { background-color: #f6f8fa }
+    button {
+      margin-top: 12px;
+      display: block;
+      background: #f6f8fa;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-weight: bold;
+      color: #535e6a;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="container" class="container-lg px-3 my-5 markdown-body">
+  </div>
+  <script src="codemirror.js"></script>
+<script type="module">
+
+function notEqualError(a, b) {
+  throw Object.assign(Error('Not Equal'), { a, b })
+}
+
+function scrollToElement(element) {
+  const y = element.getBoundingClientRect().top + window.scrollY - 70
+  window.scrollTo({ top: y, behavior: 'smooth' })
+}
+
+function equal(a, b) {
+  if (a === b) return true
+  if (typeof a !== typeof b) notEqualError(a, b)
+  if (typeof a === 'number' && Number.isNaN(a) && Number.isNaN(b)) return true
+  if (typeof a === 'object') {
+    if (!a || !b) notEqualError(a, b)
+    if (a.constructor !== b.constructor) notEqualError(a, b)
+    const entries = Object.entries(a)
+    if (entries.length !== Object.values(b).length) notEqualError(a, b)
+    for (const [k, v] of entries) {
+      if (!eq(b[k], v)) notEqualError(a, b)
+    }
+    return true
+  }
+  notEqualError(a, b)
+}
+
+const restore = new Set()
+function saveArguments(src, key) {
+  const savedArgs = []
+  const fn = src[key]
+  src[key] = (...args) => {
+    savedArgs.push(args)
+    return fn(...args)
+  }
+
+  restore.add(() => (src[key] = fn))
+
+  return savedArgs
+}
+
+function tryRun(code) {
+  try { eval(code) }
+  catch (err) { return err }
+  finally {
+    for (const cleanup of restore) cleanup()
+    restore.clear()
+  }
+}
+
+function runTests({ solution, tests }) {
+  for (const test of tests) {
+    console.clear()
+
+    const code = test.code.includes('// Your code')
+      ? test.code.replace('// Your code', solution.trim())
+      : `${solution.trim()}\n\n${test.code}`
+
+    const err = tryRun(code)
+    if (err) {
+      console.error(err.message)
+      test.element.style.display = 'block'
+      return false
+    } else {
+      test.element.style.display = 'none'
+    }
+  }
+  return true
+}
+
+const isTitle = (node, name) => node.tagName === 'H3' &&
+  node.textContent.trim().toLowerCase() === name
+
+
+const shortcut = navigator.platform.startsWith('Mac')
+  ? `Command+Option+${navigator.userAgent.includes("Firefox") ? 'K' : 'J'}`
+  : `Control+Shift+${navigator.userAgent.includes("Firefox") ? 'K' : 'J'}`
+
+const root = document.getElementById('container')
+const rootStyle = document.getElementById('root-style')
+
+// generate style
+rootStyle.innerHTML += [...Array(30).keys()].map(n => `
+.exercise:nth-child(${n+1}) h2::before {
+  content: '${String(n).padStart(2, '0')} ';
+  color: #aaa;
+  margin-left: -2.5ch;
+}`).join('\n')
+
+async function loadQuest(quest) {
+  // 1: dl github page html
+  const res = await fetch(`${quest}`)
+  const htmlStr = await res.text()
+  const dom = new DOMParser().parseFromString(htmlStr,'text/html')
+  const content = dom.body.firstElementChild
+
+  // remove first H1
+  content.firstElementChild.remove()
+
+  // Add elements until next H1
+  const exercises = []
+  let exercise, state
+  for (const node of content.childNodes) {
+    if (node.tagName === 'H1') {
+      // new quest
+      root.append(node)
+    } else if (node.tagName === 'H2') {
+      state = 'subject'
+      exercise = {
+        name: node.id.replace(/-+/g, ' ').trim().replace(/\s+/g, '-'),
+        index: exercises.length,
+        tests: [],
+        container: document.createElement('div'),
+      }
+      rootStyle.innerHTML += `
+        ._${5}:{}
+      `
+      exercise.container.classList.add('exercise')
+      exercise.container.append(node)
+      exercises.push(exercise)
+    } else if (exercise) {
+      const isJS = node.classList.contains('language-js')
+      if (state === 'tests' && isJS) {
+        node.id = `${exercise.name}-test-${exercise.testCount}`
+        node.style.display = 'none'
+        exercise.tests.push({ element: node, code: node.textContent })
+      } else if (node.tagName === 'H3') {
+        state = node.textContent.trim().toLowerCase()
+      }
+
+      if (node.tagName === 'H3' && state === 'tests') {
+        const { container, tests, name, index } = exercise
+        const editorTitle = document.createElement('h3')
+        editorTitle.textContent = 'Editor'
+        const editorElement = document.createElement('textarea')
+        const submit = document.createElement('button')
+        submit.textContent = '⚙️ Submit Solution'
+        editorElement.value = localStorage[name] ||
+          `\n// Write your solution here\n// ${shortcut} to open the console \n\n\n\n`
+        exercise.init = () => {
+          container.dataset.exercise = name
+          root.append(container)
+          const run = () => {
+            const solution = editor.getValue()
+            const pass = runTests({ solution, tests })
+            const next = exercises[index + 1]
+            localStorage[name] = solution
+            pass && next ? next.init() : loadQuest(quest + 1)
+            next && setTimeout(scrollToElement, 16, next.container)
+          }
+          submit.onclick = run
+          const editor = CodeMirror.fromTextArea(editorElement, {
+            mode: 'javascript',
+            theme: 'neo',
+            keyMap: 'sublime',
+            tabSize: 2,
+            lineNumbers: true,
+            indentWithTabs: false,
+            autoCloseBrackets: true,
+            scrollbarStyle: 'null',
+            extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
+          })
+        }
+        container.append(editorTitle, editorElement, submit)
+      }
+      exercise.container.append(node)
+    }
+  }
+
+  while (root && root.firstChild) root.removeChild(root.firstChild)
+
+  exercises[0].init()
+}
+
+loadQuest(1)</script>
+</body>
+</html>
