@@ -45,7 +45,8 @@
 <script type="module">
 
 function notEqualError(a, b) {
-  throw Object.assign(Error('Not Equal'), { a, b })
+  console.warn(a, 'not equal', b)
+  throw Error('Not Equal')
 }
 
 function scrollToElement(element) {
