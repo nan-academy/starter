@@ -197,7 +197,7 @@ function prepareEditor(exercise, exercises) {
       const next = exercises[exercise.index + 1]
       localStorage[name] = solution.replace(defaultCode.trim(), '\n').trim()
       if (!pass) return
-      if (!next) return loadQuest(quest + 1)
+      if (!next) return loadQuest(exercise.quest + 1)
       submit.textContent = '🎉 Bim !'
       submit.disabled = true
       submit.onclick = () => {}
@@ -223,6 +223,8 @@ function prepareEditor(exercise, exercises) {
       scrollbarStyle: 'null',
       extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
     })
+
+    exercise.editor.focus()
   }
 }
 
