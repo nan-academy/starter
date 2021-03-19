@@ -28,8 +28,8 @@
     #container .cm-s-neo.CodeMirror { background-color: #f6f8fa }
     button:disabled { color: #6c7278 }
     button {
-      margin: 12px 0;
-      display: block;
+      margin: 12px 12px 12px 0;
+      display: inline-block;
       background: #f6f8fa;
       border: 2px solid #ddd;
       border-radius: 4px;
@@ -141,13 +141,23 @@ rootStyle.innerHTML += [...Array(30).keys()].map(n => `
 }`).join('\n')
 
 function prepareEditor(exercise, exercises) {
-  const { container, tests, name, index } = exercise
-  const editorTitle = document.createElement('h3')
-  editorTitle.textContent = 'Editor'
+  const { container, tests, name } = exercise
   const editorElement = document.createElement('textarea')
+  const editorTitle = document.createElement('h3')
   const submit = document.createElement('button')
-  submit.textContent = '⚙️ Submit Solution'
+  const skip = document.createElement('button')
+
   editorElement.value = localStorage[name] || defaultCode
+  editorTitle.textContent = 'Editor'
+  submit.textContent = '⚙️ Submit Solution'
+  skip.textContent = '⏭️ Skip to next Quest'
+  skip.onclick = () => loadQuest(exercise.quest + 1)
+
+  skip.classList.add('tests')
+  editorTitle.classList.add('tests')
+  editorElement.classList.add('tests')
+  container.append(editorTitle, editorElement, submit)
+  exercise.bonus && container.append(skip)
 
   const completed = () => {
     for (const n of [
@@ -171,23 +181,20 @@ function prepareEditor(exercise, exercises) {
       editor.refresh()
     }
     hideSolution()
-    console.log('competed!', exercise.name)
   }
 
   exercise.skip = () => {
     exercise.init()
-    console.log('skip!!', exercise.name)
     completed({ scroll: false })
   }
 
   exercise.init = () => {
     root.append(container)
-    console.log('append', container) 
     const run = () => {
       if (submit.onclick !== run) return submit.onclick()
       const solution = exercise.editor.getValue()
       const pass = runTests({ solution, tests })
-      const next = exercises[index + 1]
+      const next = exercises[exercise.index + 1]
       localStorage[name] = solution.replace(defaultCode.trim(), '\n').trim()
       if (!pass) return
       if (!next) return loadQuest(quest + 1)
@@ -217,9 +224,6 @@ function prepareEditor(exercise, exercises) {
       extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
     })
   }
-  editorTitle.classList.add('tests')
-  editorElement.classList.add('tests')
-  container.append(editorTitle, editorElement, submit)
 }
 
 async function loadQuest(quest) {
@@ -236,7 +240,9 @@ async function loadQuest(quest) {
     } else if (node.tagName === 'H2') {
       state = 'subject'
       exercise = {
+        quest,
         name: node.id.replace(/-+/g, ' ').trim().replace(/\s+/g, '-'),
+        bonus: node.textContent.startsWith('🌟'),
         index: exercises.length,
         tests: [],
         container: document.createElement('div'),
