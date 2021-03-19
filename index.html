@@ -118,7 +118,6 @@ function runTests({ solution, tests }) {
 const isTitle = (node, name) => node.tagName === 'H3' &&
   node.textContent.trim().toLowerCase() === name
 
-
 const shortcut = navigator.platform.startsWith('Mac')
   ? `Command+Option+${navigator.userAgent.includes("Firefox") ? 'K' : 'J'}`
   : `Control+Shift+${navigator.userAgent.includes("Firefox") ? 'K' : 'J'}`
@@ -141,7 +140,7 @@ rootStyle.innerHTML += [...Array(30).keys()].map(n => `
   margin-left: -2.5ch;
 }`).join('\n')
 
-function prepareEditor(exercise, append, exercises) {
+function prepareEditor(exercise, exercises) {
   const { container, tests, name, index } = exercise
   const editorTitle = document.createElement('h3')
   editorTitle.textContent = 'Editor'
@@ -149,11 +148,44 @@ function prepareEditor(exercise, append, exercises) {
   const submit = document.createElement('button')
   submit.textContent = '⚙️ Submit Solution'
   editorElement.value = localStorage[name] || defaultCode
+
+  const completed = () => {
+    for (const n of [
+      ...container.getElementsByClassName('tests'),
+      ...container.getElementsByClassName('instructions'),
+      ...container.getElementsByClassName('CodeMirror'),
+    ]) {
+      n.style.display = 'none'
+    }
+    const { editor } = exercise
+    submit.parentNode.insertBefore(submit, editor.getWrapperElement())
+    const hideSolution = () => {
+      submit.onclick = showSolution
+      editor.getWrapperElement().style.display = 'none'
+      submit.textContent = '▶️ Show Solution'
+    }
+    const showSolution = submit.onclick = () => {
+      submit.onclick = hideSolution
+      submit.textContent = '🔽 Hide Solution'
+      editor.getWrapperElement().style.display = 'block'
+      editor.refresh()
+    }
+    hideSolution()
+    console.log('competed!', exercise.name)
+  }
+
+  exercise.skip = () => {
+    exercise.init()
+    console.log('skip!!', exercise.name)
+    completed({ scroll: false })
+  }
+
   exercise.init = () => {
     root.append(container)
+    console.log('append', container) 
     const run = () => {
       if (submit.onclick !== run) return submit.onclick()
-      const solution = editor.getValue()
+      const solution = exercise.editor.getValue()
       const pass = runTests({ solution, tests })
       const next = exercises[index + 1]
       localStorage[name] = solution.replace(defaultCode.trim(), '\n').trim()
@@ -166,33 +198,14 @@ function prepareEditor(exercise, append, exercises) {
         submit.disabled = false
         submit.textContent = '🎉 Bim ! Jump to the next exercise'
         submit.onclick = () => {
-          for (const n of [
-            ...container.getElementsByClassName('tests'),
-            ...container.getElementsByClassName('instructions'),
-            ...container.getElementsByClassName('CodeMirror'),
-          ]) {
-            n.style.display = 'none'
-          }
-          submit.parentNode.insertBefore(submit, editor.getWrapperElement())
+          completed()
           next.init()
           setTimeout(scrollToElement, 50, next.container)
-          const hideSolution = () => {
-            submit.onclick = showSolution
-            editor.getWrapperElement().style.display = 'none'
-            submit.textContent = '▶️ Show Solution'
-          }
-          const showSolution = submit.onclick = () => {
-            submit.onclick = hideSolution
-            submit.textContent = '🔽 Hide Solution'
-            editor.getWrapperElement().style.display = 'block'
-            editor.refresh()
-          }
-          hideSolution()
         }
-      }, 500)
+      }, 250)
     }
     submit.onclick = run
-    const editor = CodeMirror.fromTextArea(editorElement, {
+    exercise.editor = CodeMirror.fromTextArea(editorElement, {
       mode: 'javascript',
       theme: 'neo',
       keyMap: 'sublime',
@@ -204,34 +217,21 @@ function prepareEditor(exercise, append, exercises) {
       extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
     })
   }
-  append(editorTitle, editorElement)
-  container.append(submit)
+  editorTitle.classList.add('tests')
+  editorElement.classList.add('tests')
+  container.append(editorTitle, editorElement, submit)
 }
 
 async function loadQuest(quest) {
-  // 1: dl github page html
   const res = await fetch(`${quest}`)
   const htmlStr = await res.text()
   const dom = new DOMParser().parseFromString(htmlStr, 'text/html')
   const content = dom.body.firstElementChild
-
-  // remove first H1
-  // content.firstElementChild.remove() ??
-
-  // Add elements until next H1
   const exercises = []
   let exercise, state
-  const append = (...nodes) => {
-    for (const node of nodes) {
-      if (state === 'tests' || state === 'instructions') {
-        node.classList.add(state)
-      }
-      exercise.container.append(node)
-    }
-  }
+
   for (const node of content.childNodes) {
     if (node.tagName === 'H1') {
-      // new quest
       root.append(node)
     } else if (node.tagName === 'H2') {
       state = 'subject'
@@ -241,32 +241,40 @@ async function loadQuest(quest) {
         tests: [],
         container: document.createElement('div'),
       }
-      rootStyle.innerHTML += `
-        ._${5}:{}
-      `
       exercise.container.classList.add('exercise')
-      append(node)
+      exercise.container.append(node)
       exercises.push(exercise)
     } else if (exercise) {
       if (node.tagName === 'H3') {
         state = node.textContent.trim().toLowerCase()
-        state === 'tests' && prepareEditor(exercise, append, exercises)
+        state === 'tests' && prepareEditor(exercise, exercises)
       } else if (state === 'tests' && node.classList.contains('language-js')) {
         node.id = `${exercise.name}-test-${exercise.testCount}`
         node.style.display = 'none'
         exercise.tests.push({ element: node, code: node.textContent })
       }
-      append(node)
+
+      if (state === 'tests' || state === 'instructions') {
+        node.classList.add(state)
+      }
+
+      exercise.container.append(node)
     }
   }
 
   while (root && root.firstChild) root.removeChild(root.firstChild)
 
-  if (exercises.length) {
-    exercises[0].init()
-  } else {
-    root.append('~~ The End ~~')
+  let currentExercise = exercises[0]
+  for (const e of exercises) {
+    const next = exercises[e.index + 1]
+    if (!next) break
+    if (!localStorage[next.name]) break
+    e.skip()
+    currentExercise = next
   }
+
+  currentExercise.init()
+  scrollToElement(currentExercise.container)
 }
 
 loadQuest(1)</script>
