@@ -279,6 +279,7 @@ async function loadQuest(quest) {
     currentExercise = next
   }
 
+  if (!currentExercise) return document.body.append('~~ The End ~~')
   currentExercise.init()
   scrollToElement(currentExercise.container)
 }
