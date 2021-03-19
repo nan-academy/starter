@@ -202,7 +202,6 @@ async function loadQuest(quest) {
             localStorage[name] = solution
             if (!pass) return
             if (!next) return loadQuest(quest + 1)
-            next.init()
             submit.textContent = '🎉 Bim !'
             submit.disabled = true
             submit.onclick = () => {}
@@ -218,6 +217,7 @@ async function loadQuest(quest) {
                   n.style.display = 'none'
                 }
                 submit.parentNode.insertBefore(submit, editor.getWrapperElement())
+                next.init()
                 setTimeout(scrollToElement, 50, next.container)
                 const hideSolution = () => {
                   submit.onclick = showSolution
