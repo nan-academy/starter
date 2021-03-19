@@ -123,6 +123,13 @@ const shortcut = navigator.platform.startsWith('Mac')
   ? `Command+Option+${navigator.userAgent.includes("Firefox") ? 'K' : 'J'}`
   : `Control+Shift+${navigator.userAgent.includes("Firefox") ? 'K' : 'J'}`
 
+const defaultCode = window.defaultCode = `
+// Write your solution here
+// ${shortcut} to open the console
+
+
+`
+
 const root = document.getElementById('container')
 const rootStyle = document.getElementById('root-style')
 
@@ -133,6 +140,73 @@ rootStyle.innerHTML += [...Array(30).keys()].map(n => `
   color: #aaa;
   margin-left: -2.5ch;
 }`).join('\n')
+
+function prepareEditor(exercise, append, exercises) {
+  const { container, tests, name, index } = exercise
+  const editorTitle = document.createElement('h3')
+  editorTitle.textContent = 'Editor'
+  const editorElement = document.createElement('textarea')
+  const submit = document.createElement('button')
+  submit.textContent = '⚙️ Submit Solution'
+  editorElement.value = localStorage[name] || defaultCode
+  exercise.init = () => {
+    root.append(container)
+    const run = () => {
+      if (submit.onclick !== run) return submit.onclick()
+      const solution = editor.getValue()
+      const pass = runTests({ solution, tests })
+      const next = exercises[index + 1]
+      localStorage[name] = solution.replace(defaultCode.trim(), '\n').trim()
+      if (!pass) return
+      if (!next) return loadQuest(quest + 1)
+      submit.textContent = '🎉 Bim !'
+      submit.disabled = true
+      submit.onclick = () => {}
+      setTimeout(() => {
+        submit.disabled = false
+        submit.textContent = '🎉 Bim ! Jump to the next exercise'
+        submit.onclick = () => {
+          for (const n of [
+            ...container.getElementsByClassName('tests'),
+            ...container.getElementsByClassName('instructions'),
+            ...container.getElementsByClassName('CodeMirror'),
+          ]) {
+            n.style.display = 'none'
+          }
+          submit.parentNode.insertBefore(submit, editor.getWrapperElement())
+          next.init()
+          setTimeout(scrollToElement, 50, next.container)
+          const hideSolution = () => {
+            submit.onclick = showSolution
+            editor.getWrapperElement().style.display = 'none'
+            submit.textContent = '▶️ Show Solution'
+          }
+          const showSolution = submit.onclick = () => {
+            submit.onclick = hideSolution
+            submit.textContent = '🔽 Hide Solution'
+            editor.getWrapperElement().style.display = 'block'
+            editor.refresh()
+          }
+          hideSolution()
+        }
+      }, 500)
+    }
+    submit.onclick = run
+    const editor = CodeMirror.fromTextArea(editorElement, {
+      mode: 'javascript',
+      theme: 'neo',
+      keyMap: 'sublime',
+      tabSize: 2,
+      lineNumbers: true,
+      indentWithTabs: false,
+      autoCloseBrackets: true,
+      scrollbarStyle: 'null',
+      extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
+    })
+  }
+  append(editorTitle, editorElement)
+  container.append(submit)
+}
 
 async function loadQuest(quest) {
   // 1: dl github page html
@@ -174,82 +248,13 @@ async function loadQuest(quest) {
       append(node)
       exercises.push(exercise)
     } else if (exercise) {
-      const isJS = node.classList.contains('language-js')
-      if (state === 'tests' && isJS) {
+      if (node.tagName === 'H3') {
+        state = node.textContent.trim().toLowerCase()
+        state === 'tests' && prepareEditor(exercise, append, exercises)
+      } else if (state === 'tests' && node.classList.contains('language-js')) {
         node.id = `${exercise.name}-test-${exercise.testCount}`
         node.style.display = 'none'
         exercise.tests.push({ element: node, code: node.textContent })
-      } else if (node.tagName === 'H3') {
-        state = node.textContent.trim().toLowerCase()
-      }
-
-      if (node.tagName === 'H3' && state === 'tests') {
-        const { container, tests, name, index } = exercise
-        const editorTitle = document.createElement('h3')
-        editorTitle.textContent = 'Editor'
-        const editorElement = document.createElement('textarea')
-        const submit = document.createElement('button')
-        submit.textContent = '⚙️ Submit Solution'
-        editorElement.value = localStorage[name] ||
-          `\n// Write your solution here\n// ${shortcut} to open the console \n\n\n\n`
-        exercise.init = () => {
-          // root.dataset.exercise = name
-          root.append(container)
-          const run = () => {
-            if (submit.onclick !== run) return submit.onclick()
-            const solution = editor.getValue()
-            const pass = runTests({ solution, tests })
-            const next = exercises[index + 1]
-            localStorage[name] = solution
-            if (!pass) return
-            if (!next) return loadQuest(quest + 1)
-            submit.textContent = '🎉 Bim !'
-            submit.disabled = true
-            submit.onclick = () => {}
-            setTimeout(() => {
-              submit.disabled = false
-              submit.textContent = '🎉 Bim ! Jump to the next exercise'
-              submit.onclick = () => {
-                for (const n of [
-                  ...container.getElementsByClassName('tests'),
-                  ...container.getElementsByClassName('instructions'),
-                  ...container.getElementsByClassName('CodeMirror'),
-                ]) {
-                  n.style.display = 'none'
-                }
-                submit.parentNode.insertBefore(submit, editor.getWrapperElement())
-                next.init()
-                setTimeout(scrollToElement, 50, next.container)
-                const hideSolution = () => {
-                  submit.onclick = showSolution
-                  editor.getWrapperElement().style.display = 'none'
-                  submit.textContent = '▶️ Show Solution'
-                }
-                const showSolution = submit.onclick = () => {
-                  submit.onclick = hideSolution
-                  submit.textContent = '🔽 Hide Solution'
-                  editor.getWrapperElement().style.display = 'block'
-                  editor.refresh()
-                }
-                hideSolution()
-              }
-            }, 500)
-          }
-          submit.onclick = run
-          const editor = CodeMirror.fromTextArea(editorElement, {
-            mode: 'javascript',
-            theme: 'neo',
-            keyMap: 'sublime',
-            tabSize: 2,
-            lineNumbers: true,
-            indentWithTabs: false,
-            autoCloseBrackets: true,
-            scrollbarStyle: 'null',
-            extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
-          })
-        }
-        append(editorTitle, editorElement)
-        container.append(submit)
       }
       append(node)
     }
