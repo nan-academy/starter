@@ -126,7 +126,7 @@ const rootStyle = document.getElementById('root-style')
 
 // generate style
 rootStyle.innerHTML += [...Array(30).keys()].map(n => `
-.exercise:nth-child(${n+1}) h2::before {
+.exercise:nth-child(${n}) h2::before {
   content: '${String(n).padStart(2, '0')} ';
   color: #aaa;
   margin-left: -2.5ch;
@@ -136,15 +136,23 @@ async function loadQuest(quest) {
   // 1: dl github page html
   const res = await fetch(`${quest}`)
   const htmlStr = await res.text()
-  const dom = new DOMParser().parseFromString(htmlStr,'text/html')
+  const dom = new DOMParser().parseFromString(htmlStr, 'text/html')
   const content = dom.body.firstElementChild
 
   // remove first H1
-  content.firstElementChild.remove()
+  // content.firstElementChild.remove() ??
 
   // Add elements until next H1
   const exercises = []
   let exercise, state
+  const append = (...nodes) => {
+    for (const node of nodes) {
+      if (state === 'tests' || state === 'instructions') {
+        node.classList.add(state)
+      }
+      exercise.container.append(node)
+    }
+  }
   for (const node of content.childNodes) {
     if (node.tagName === 'H1') {
       // new quest
@@ -161,7 +169,7 @@ async function loadQuest(quest) {
         ._${5}:{}
       `
       exercise.container.classList.add('exercise')
-      exercise.container.append(node)
+      append(node)
       exercises.push(exercise)
     } else if (exercise) {
       const isJS = node.classList.contains('language-js')
@@ -183,15 +191,27 @@ async function loadQuest(quest) {
         editorElement.value = localStorage[name] ||
           `\n// Write your solution here\n// ${shortcut} to open the console \n\n\n\n`
         exercise.init = () => {
-          container.dataset.exercise = name
+          // root.dataset.exercise = name
           root.append(container)
           const run = () => {
             const solution = editor.getValue()
             const pass = runTests({ solution, tests })
             const next = exercises[index + 1]
             localStorage[name] = solution
-            pass && next ? next.init() : loadQuest(quest + 1)
-            next && setTimeout(scrollToElement, 16, next.container)
+            if (!pass) return
+            if (next) {
+              next.init()
+              for (const n of [
+                ...container.getElementsByClassName('tests'),
+                ...container.getElementsByClassName('instructions'),
+                ...container.getElementsByClassName('CodeMirror'),
+              ]) {
+                n.style.display = 'none'
+              }
+              setTimeout(scrollToElement, 50, next.container)
+            } else {
+              loadQuest(quest + 1)
+            }
           }
           submit.onclick = run
           const editor = CodeMirror.fromTextArea(editorElement, {
@@ -206,15 +226,19 @@ async function loadQuest(quest) {
             extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
           })
         }
-        container.append(editorTitle, editorElement, submit)
+        append(editorTitle, editorElement, submit)
       }
-      exercise.container.append(node)
+      append(node)
     }
   }
 
   while (root && root.firstChild) root.removeChild(root.firstChild)
 
-  exercises[0].init()
+  if (exercises.length) {
+    exercises[0].init()
+  } else {
+    root.append('~~ The End ~~')
+  }
 }
 
 loadQuest(1)</script>
