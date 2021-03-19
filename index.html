@@ -195,6 +195,7 @@ async function loadQuest(quest) {
           // root.dataset.exercise = name
           root.append(container)
           const run = () => {
+            if (submit.onclick !== run) return submit.onclick()
             const solution = editor.getValue()
             const pass = runTests({ solution, tests })
             const next = exercises[index + 1]
