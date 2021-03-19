@@ -27,7 +27,7 @@
     #container h2 { margin-top: 96px }
     #container .cm-s-neo.CodeMirror { background-color: #f6f8fa }
     button {
-      margin-top: 12px;
+      margin: 12px 0;
       display: block;
       background: #f6f8fa;
       border: 2px solid #ddd;
@@ -200,19 +200,38 @@ async function loadQuest(quest) {
             const next = exercises[index + 1]
             localStorage[name] = solution
             if (!pass) return
-            if (next) {
-              next.init()
-              for (const n of [
-                ...container.getElementsByClassName('tests'),
-                ...container.getElementsByClassName('instructions'),
-                ...container.getElementsByClassName('CodeMirror'),
-              ]) {
-                n.style.display = 'none'
+            if (!next) return loadQuest(quest + 1)
+            next.init()
+            submit.textContent = '🎉 Bim !'
+            submit.disabled = true
+            submit.onclick = () => {}
+            setTimeout(() => {
+              submit.disabled = false
+              submit.textContent = '🎉 Bim ! Jump to the next exercise'
+              submit.onclick = () => {
+                for (const n of [
+                  ...container.getElementsByClassName('tests'),
+                  ...container.getElementsByClassName('instructions'),
+                  ...container.getElementsByClassName('CodeMirror'),
+                ]) {
+                  n.style.display = 'none'
+                }
+                submit.parentNode.insertBefore(submit, editor.getWrapperElement())
+                setTimeout(scrollToElement, 50, next.container)
+                const hideSolution = () => {
+                  submit.onclick = showSolution
+                  editor.getWrapperElement().style.display = 'none'
+                  submit.textContent = '▶️ Show Solution'
+                }
+                const showSolution = submit.onclick = () => {
+                  submit.onclick = hideSolution
+                  submit.textContent = '🔽 Hide Solution'
+                  editor.getWrapperElement().style.display = 'block'
+                  editor.refresh()
+                }
+                hideSolution()
               }
-              setTimeout(scrollToElement, 50, next.container)
-            } else {
-              loadQuest(quest + 1)
-            }
+            }, 500)
           }
           submit.onclick = run
           const editor = CodeMirror.fromTextArea(editorElement, {
@@ -227,7 +246,8 @@ async function loadQuest(quest) {
             extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
           })
         }
-        append(editorTitle, editorElement, submit)
+        append(editorTitle, editorElement)
+        container.append(submit)
       }
       append(node)
     }
