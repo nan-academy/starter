@@ -20,8 +20,8 @@
   <script type="application/ld+json">
       { "@type": "WebPage", "url": "https://nan-academy.github.io/starter/", "headline": "Starter", "description": "A starter pack of JS exercises", "@context": "https://schema.org" }
   </script>
-  <link rel="stylesheet" href="codemirror.css" />
-  <link rel="stylesheet" href="https://nan-academy.github.io/starter/assets/css/style.css?v=a50420b7f2e2e412fdfc7abe65e27eb12ac1676c" />
+  <link rel="stylesheet" href="lib/codemirror.css" />
+  <link rel="stylesheet" href="lib/style.css" />
   <style id="root-style">
     body { padding-bottom: 40em }
     #container h2 { margin-top: 96px }
@@ -42,7 +42,7 @@
 <body>
   <div id="container" class="container-lg px-3 my-5 markdown-body">
   </div>
-  <script src="codemirror.js"></script>
+  <script src="lib/codemirror.js"></script>
 <script type="module">
 
 function notEqualError(a, b) {
@@ -229,7 +229,7 @@ function prepareEditor(exercise, exercises) {
 }
 
 async function loadQuest(quest) {
-  const res = await fetch(`${quest}`)
+  const res = await fetch(`quests/${quest}`)
   const htmlStr = await res.text()
   const dom = new DOMParser().parseFromString(htmlStr, 'text/html')
   const content = dom.body.firstElementChild
