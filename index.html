@@ -207,6 +207,7 @@ function prepareEditor(exercise, exercises) {
         submit.onclick = () => {
           completed()
           next.init()
+          next.editor.focus()
           setTimeout(scrollToElement, 50, next.container)
         }
       }, 250)
@@ -223,8 +224,6 @@ function prepareEditor(exercise, exercises) {
       scrollbarStyle: 'null',
       extraKeys: { 'Ctrl-S': run, 'Cmd-S': run, 'Ctrl-Enter': run }
     })
-
-    exercise.editor.focus()
   }
 }
 
