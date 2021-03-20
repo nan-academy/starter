@@ -13,10 +13,14 @@ const noContent = res => (res.statusCode = 204, res.end())
 const writeLog = req => {
   const url = new URL(req.url, `http://${req.headers.host}`)
   const path = url.pathname.slice(1)
-  const { session, name, data } = Object.fromEntries(url.searchParams)
+  const { session } = Object.fromEntries(url.searchParams)
   if (!path || !session) return
   const log = logs[path] || (logs[path] = createWriteStream(`${path}.log`, APPEND))
-  log.write(`${Date.now()}@${session}${name??''}:${data??''}\n`)
+  req.setEncoding('utf8')
+  req.once('data', data => {
+    const payload = data.slice(0, 8192).replace(/\r?\n|\r/g, '').trim()
+    log.write(`${Date.now()}@${session}:${payload}\n`)
+  })
 }
 
 const queryLog = async (req, res) => {
