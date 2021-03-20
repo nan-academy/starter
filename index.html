@@ -52,6 +52,23 @@
   <script src="lib/codemirror.js"></script>
 <script type="module">
 
+const cache = {
+  get: (k, v) => localStorage[`starter@${k}`] || (v || cache.set(k, v)),
+  set: (k, v) => v == null
+    ? localStorage.removeItem(`starter@${k}`)
+    : (localStorage[`starter@${k}`] = v)
+}
+
+const genId = () => Math.random().toString(36).slice(2).padStart('0', 11)
+const session = cache.get('sesssion', genId().slice(5))
+const notGithub = !location.hostname.includes('.github.io')
+const log = notGithub ? console.log : data => {
+  fetch(`https://nan.oct.ovh:8443/starter-progress?session=${session}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }).catch(console.debug)
+}
+
 function notEqualError(a, b) {
   console.warn('Not Equal:', [a, b])
   throw Error('Not Equal')
@@ -146,17 +163,17 @@ rootStyle.innerHTML += [...Array(30).keys()].map(n => `
 }`).join('')
 
 function prepareEditor(exercise, exercises) {
-  const { container, tests, name } = exercise
+  const { container, tests, name, quest, key } = exercise
   const editorElement = document.createElement('textarea')
   const editorTitle = document.createElement('h3')
   const submit = document.createElement('button')
   const skip = document.createElement('button')
 
-  editorElement.value = localStorage[name] || defaultCode
+  editorElement.value = cache.get(key, localStorage[name]) || defaultCode
   editorTitle.textContent = 'Editor'
   submit.textContent = '⚙️ Submit Solution'
   skip.textContent = '⏭️ Skip to next Quest'
-  skip.onclick = () => loadQuest(exercise.quest + 1)
+  skip.onclick = () => loadQuest(quest + 1)
 
   skip.classList.add('tests')
   editorTitle.classList.add('tests')
@@ -200,9 +217,14 @@ function prepareEditor(exercise, exercises) {
       const solution = exercise.editor.getValue()
       const pass = runTests({ solution, tests })
       const next = exercises[exercise.index + 1]
-      localStorage[name] = solution.replace(defaultCode.trim(), '\n').trim()
+      const code = solution.replace(defaultCode.trim(), '\n').trim()
+      if (code.length > 10 && cache.get(key) !== code) {
+        cache.set(key, code)
+        log(JSON.stringify({ key, code, pass }))
+        localStorage.removeItem(name) // TODO: remove
+      }    
       if (!pass) return
-      if (!next) return loadQuest(exercise.quest + 1)
+      if (!next) return loadQuest(quest + 1)
       submit.textContent = '🎉 Bim !'
       submit.disabled = true
       submit.onclick = () => {}
@@ -245,9 +267,11 @@ async function loadQuest(quest) {
       root.append(node)
     } else if (node.tagName === 'H2') {
       state = 'subject'
+      const name = node.id.replace(/-+/g, ' ').trim().replace(/\s+/g, '-')
       exercise = {
+        key: `${quest}/${name}`,
+        name,
         quest,
-        name: node.id.replace(/-+/g, ' ').trim().replace(/\s+/g, '-'),
         bonus: node.textContent.startsWith('🌟'),
         index: exercises.length,
         tests: [],
@@ -280,7 +304,7 @@ async function loadQuest(quest) {
   for (const e of exercises) {
     const next = exercises[e.index + 1]
     if (!next) break
-    if (!localStorage[next.name]) break
+    if (!localStorage[next.key]) break
     e.skip()
     currentExercise = next
   }
