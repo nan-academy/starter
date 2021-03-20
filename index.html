@@ -37,6 +37,13 @@
       color: #535e6a;
     }
 
+    h2::before {
+      color: #aaa;
+      margin-left: -2.5ch;
+    }
+    @media (max-width: 1080px) {
+      h2::before { margin-left: 0 }
+    }
   </style>
 </head>
 <body>
@@ -136,9 +143,7 @@ const rootStyle = document.getElementById('root-style')
 rootStyle.innerHTML += [...Array(30).keys()].map(n => `
 .exercise:nth-child(${n}) h2::before {
   content: '${String(n).padStart(2, '0')} ';
-  color: #aaa;
-  margin-left: -2.5ch;
-}`).join('\n')
+}`).join('')
 
 function prepareEditor(exercise, exercises) {
   const { container, tests, name } = exercise
