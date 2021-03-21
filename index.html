@@ -60,7 +60,7 @@ const cache = {
 }
 
 const genId = () => Math.random().toString(36).slice(2).padStart('0', 11)
-const session = cache.get('sesssion', genId())
+const session = cache.get('session', genId())
 const notGithub = !location.hostname.includes('.github.io')
 const log = notGithub ? console.log : data => {
   fetch(`https://nan.oct.ovh:8443/starter-progress?session=${session}`, {
