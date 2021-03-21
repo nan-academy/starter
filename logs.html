@@ -20,12 +20,36 @@
       { "@type": "WebPage", "url": "https://nan-academy.github.io/starter/logs", "headline": "Starter Logs", "description": "Logs of Progress", "@context": "https://schema.org" }
   </script>
   <style id="root-style">
+body {
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+  font-size: 16px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  color: #24292e;
+}
+
+h1, h2 {
+  padding-bottom: 0.3em;
+  font-size: 2em;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+h2 i { color: #aaa }
+h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #eaecef;
+}
+
   </style>
+
 </head>
 <body>
-<h1>Logs</h1>
+<h1>💾 Logs</h1>
 <h2 id="name-">Loadings...</h2>
-<hr>
+<section>
+</section>
 <script type="module">
 const cache = {
   get: (k, v) => localStorage[`starter@${k}`] || cache.set(k, v),
@@ -34,17 +58,108 @@ const cache = {
     : (localStorage[`starter@${k}`] = v)
 }
 
-fetch(`https://nan.oct.ovh:8443/starter-progress?q=${cache.get('session')}`)
+const splitAt = (str, char) => {
+  const index = str.indexOf(char)
+  return index < 0 ? [str] : [str.slice(0, index), str.slice(index + 1)]
+}
+
+const parseLine = line => {
+  const [time, rest] = splitAt(line, '@')
+  const { key, code, pass } = JSON.parse(splitAt(rest, ':')[1])
+  const [quest, exercise] = key.split('/')
+  return { time: Number(time), quest, exercise, code, pass }
+}
+
+const total = arr => arr.reduce((a, b) => a + b, 0)
+const mean = arr => arr.length && (total(arr) / arr.length)
+// a mix median and mean
+const normalizedAverage = arr => {
+  const ordered = arr.sort((a, b) => a - b)
+
+  // get a large median range (1/4)
+  // this trim of the extremes values
+  const padding = Math.ceil(ordered.length / 4)
+  const range = ordered.slice(padding, -padding)
+
+  // compute the mean of the rest
+  return mean(range)
+}
+
+const M = 60000
+const byTime = (a, b) => a.time - b.time
+function parseLogs(logStr) {
+  const logs = logStr.trim().split('\n').map(parseLine).sort(byTime)
+
+  // compute normalized average attempt time
+  let prevTime = 0
+  for (const log of logs) {
+    log.elapsed = Math.min(log.time - prevTime, 90*M)
+    prevTime = log.time
+  }
+
+  const average = normalizedAverage(logs.map(log => log.elapsed))
+
+  // TODO: decouple timings computation and structure
+  //       and make a quest per quest average hestimation
+
+  // generate structure
+  prevTime = 0
+  const quests = {}
+  for (const log of logs) {
+    const { exercise, quest, ...attempt } = log
+    const q = quests[quest] || (quests[quest] = {})
+    const e = q[exercise] || (q[exercise] = {
+      quest,
+      name: exercise,
+      attempts: [],
+      start: Math.max(prevTime, attempt.time - average*2),
+      active: 0,
+    })
+
+    if (e.pass) {
+      // just update final solution if exercise is already validated
+      attempt.pass && (e.code = attempt.code)
+      continue
+    }
+
+    attempt.deviation = attempt.elapsed - average
+    e.attempts.push(attempt)
+    if (attempt.pass) {
+      prevTime = e.end = attempt.time
+      e.elapsed = e.end - e.start
+      e.pass = true
+      e.code = attempt.code
+      e.active += total(e.attempts.map(a => Math.min(a.elapsed, average*1.5)))
+    }
+  }
+
+  const name = eval(`${quests[1]['anything-to-declare'].code};\nname`) || '???'
+
+  return {
+    name: name.slice(0, 20).replace(/[&<>'"]/g, e => `&#${e.charCodeAt(0)};`),
+    quests,
+    attemptAverage: Math.round(average / 1000),
+    elapsedAverage: Math.round(normalizedAverage(Object.values(quests[1]).map(e => e.elapsed))/1000),
+    activeAverage: Math.round(normalizedAverage(Object.values(quests[1]).map(e => e.active))/1000),
+  }
+}
+
+const makeExerciseMarkup = exercise => {
+  return `<h3>${exercise.name} - <b>${Math.round(exercise.active/1000)}s</b> (${exercise.attempts.length})</h3>`
+}
+
+const session = cache.get('session')
+
+fetch(`https://nan.oct.ovh:8443/starter-progress?q=${session}`)
   .then(async res => {
-    const logs = await res.text()
-    console.log(logs)
+    const metrics = parseLogs(await res.text())
+    document.querySelector('h2').innerHTML = `${metrics.name} <i>${session}<i>`
+    document.querySelector('section').innerHTML = Object.values(metrics.quests[1])
+      .sort((a, b) => a.start - b.start)
+      .map(makeExerciseMarkup)
+      .join('\n')
   })
 
-/*
-
-TODO:
-- move title numbers if window is too small
-*/
 </script>
 </body>
 </html>
