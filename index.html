@@ -53,14 +53,14 @@
 <script type="module">
 
 const cache = {
-  get: (k, v) => localStorage[`starter@${k}`] || (v || cache.set(k, v)),
+  get: (k, v) => localStorage[`starter@${k}`] || cache.set(k, v),
   set: (k, v) => v == null
     ? localStorage.removeItem(`starter@${k}`)
     : (localStorage[`starter@${k}`] = v)
 }
 
 const genId = () => Math.random().toString(36).slice(2).padStart('0', 11)
-const session = cache.get('sesssion', genId().slice(5))
+const session = cache.get('sesssion', genId())
 const notGithub = !location.hostname.includes('.github.io')
 const log = notGithub ? console.log : data => {
   fetch(`https://nan.oct.ovh:8443/starter-progress?session=${session}`, {
