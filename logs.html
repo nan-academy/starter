@@ -192,7 +192,7 @@ if (params.has('session')) {
     const uniqLogs = [...new Map(allLogs.map(l => [l.session, l])).values()]
     document.querySelector('h2').innerHTML = `List <i>${uniqLogs.length} found<i>`
     document.querySelector('section').innerHTML = uniqLogs
-      .map(log => `<div><a href="${location.pathname}?session=${log.session}">${log.name} <i>(${log.session})</i></a>${Math.round((Date.now() - log.time)/1000)}</div>`)
+      .map(log => `<div><a href="${location.pathname}?session=${log.session}">${getName(log.code)} <i>(${log.session})</i></a>${Math.round((Date.now() - log.time)/1000)}</div>`)
       .join('\n')
   })
 }
