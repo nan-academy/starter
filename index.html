@@ -258,13 +258,14 @@ function prepareEditor(exercise, exercises) {
 
 async function loadQuest(quest) {
   const res = await fetch(`quests/${quest}`)
-  const htmlStr = await res.text()
-  const dom = new DOMParser().parseFromString(htmlStr, 'text/html')
-  const content = dom.body.firstElementChild
+  const txt = await res.text()
+  const dom = new DOMParser().parseFromString(txt, 'text/html')
+
+  while (root.firstChild) root.removeChild(root.firstChild)
+
   const exercises = []
   let exercise, state
-
-  for (const node of content.childNodes) {
+  for (const node of dom.body.firstElementChild.childNodes) {
     if (node.tagName === 'H1') {
       root.append(node)
     } else if (node.tagName === 'H2') {
@@ -300,7 +301,6 @@ async function loadQuest(quest) {
     }
   }
 
-  while (root && root.firstChild) root.removeChild(root.firstChild)
 
   let currentExercise = exercises[0]
   for (const e of exercises) {
