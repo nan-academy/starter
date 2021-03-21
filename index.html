@@ -220,7 +220,7 @@ function prepareEditor(exercise, exercises) {
       const code = solution.replace(defaultCode.trim(), '\n').trim()
       if (code.length > 10 && cache.get(key) !== code) {
         cache.set(key, code)
-        log(JSON.stringify({ key, code, pass }))
+        log({ key, code, pass })
         localStorage.removeItem(name) // TODO: remove
       }    
       if (!pass) return
