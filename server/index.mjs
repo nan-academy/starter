@@ -41,12 +41,27 @@ const createServer = !process.env.TLS_PATH ? http.createServer :
   }, fn)
 
 const server = createServer((req, res) => {
+  if (req.headers.origin !== 'https://nan-academy.github.io') {
+    res.statusCode = 404
+    return res.end('not-found')
+  }
   console.log(req.method, req.url)
-  if (req.method === 'GET') {
-    queryLog(req, res)
-  } else {
-    noContent(res)
-    req.method === 'PUT' && writeLog(req)
+  res.setHeader('Access-Control-Allow-Origin', 'https://nan-academy.github.io')
+  res.setHeader('Access-Control-Allow-Methods', 'PUT, GET, OPTIONS')
+  res.setHeader('Content-Type', 'text/plain; charset=UTF-8')
+  try {
+    if (req.method === 'GET') {
+      queryLog(req, res)
+    } else {
+      noContent(res)
+      req.method === 'PUT' && writeLog(req)
+    }
+  } catch (err) {
+    console.error(err.stack)
+    if (res.writableEnded) {
+      res.statusCode = err.statusCode || 500
+      res.end(err.message)
+    }
   }
 }).listen(PORT)
 
