@@ -42,6 +42,11 @@ h2 {
   border-bottom: 1px solid #eaecef;
 }
 
+h3 {
+  display: flex;
+  justify-content: space-between;
+}
+
   </style>
 
 </head>
@@ -65,9 +70,10 @@ const splitAt = (str, char) => {
 
 const parseLine = line => {
   const [time, rest] = splitAt(line, '@')
-  const { key, code, pass } = JSON.parse(splitAt(rest, ':')[1])
+  const [session, data] = splitAt(rest, ':')
+  const { key, code, pass } = JSON.parse(data)
   const [quest, exercise] = key.split('/')
-  return { time: Number(time), quest, exercise, code, pass }
+  return { session, time: Number(time), quest, exercise, code, pass }
 }
 
 const total = arr => arr.reduce((a, b) => a + b, 0)
@@ -87,8 +93,7 @@ const normalizedAverage = arr => {
 
 const M = 60000
 const byTime = (a, b) => a.time - b.time
-function parseLogs(logStr) {
-  const logs = logStr.trim().split('\n').map(parseLine).sort(byTime)
+function parseLogs(logs) {
 
   // compute normalized average attempt time
   let prevTime = 0
@@ -105,8 +110,7 @@ function parseLogs(logStr) {
   // generate structure
   prevTime = 0
   const quests = {}
-  for (const log of logs) {
-    const { exercise, quest, ...attempt } = log
+  for (const { exercise, quest, session, ...attempt } of logs) {
     const q = quests[quest] || (quests[quest] = {})
     const e = q[exercise] || (q[exercise] = {
       quest,
@@ -133,11 +137,11 @@ function parseLogs(logStr) {
     }
   }
 
-  let name = '???'
-  try { name = eval(`${quests[1]['anything-to-declare'].code};\nname`) } catch (e) {}
+  // TODO: fetch quest, parse title and list exercise with 0 attempts
 
   return {
-    name: name.slice(0, 20).replace(/[&<>'"]/g, e => `&#${e.charCodeAt(0)};`),
+    name: getName(quests[1]['anything-to-declare'].code),
+    session: logs[0]?.session || '???',
     quests,
     attemptAverage: Math.round(average / 1000),
     elapsedAverage: Math.round(normalizedAverage(Object.values(quests[1]).map(e => e.elapsed))/1000),
@@ -146,22 +150,52 @@ function parseLogs(logStr) {
 }
 
 const makeExerciseMarkup = exercise => {
-  return `<h3>${exercise.name} - <b>${Math.round(exercise.active/1000)}s</b> (${exercise.attempts.length})</h3>`
+  return `<h3>${exercise.name} <b>${Math.round(exercise.active/1000)}s/<i>${exercise.attempts.length}</i></b></h3>`
 }
 
-const session = cache.get('session')
+const showSession = (strLogs) => {
+  const metrics = parseLogs(strLogs)
+  document.querySelector('h2').innerHTML = `${metrics.name} <i>${params.get('session')}<i>`
+  document.querySelector('section').innerHTML = Object.values(metrics.quests[1])
+    .sort((a, b) => a.start - b.start)
+    .map(makeExerciseMarkup)
+    .join('\n')
 
-fetch(`https://nan.oct.ovh:8443/starter-progress?q=${session}`)
-  .then(async res => {
-    const metrics = parseLogs(await res.text())
-    document.querySelector('h2').innerHTML = `${metrics.name} <i>${session}<i>`
-    document.querySelector('section').innerHTML = Object.values(metrics.quests[1])
-      .sort((a, b) => a.start - b.start)
-      .map(makeExerciseMarkup)
+  console.log(window.metrics = metrics)
+}
+
+const getName = code => {
+  try {
+    return eval(`${code};\nname`)
+      .slice(0, 20)
+      .replace(/[&<>'"]/g, e => `&#${e.charCodeAt(0)};`)
+  } catch {
+    return '???'
+  }
+}
+
+//*/
+
+const query = async q => {
+  const search = new URLSearchParams({ q })
+  const res = await fetch(`https://nan.oct.ovh:8443/starter-progress?${search}`)
+  const txt = await res.text()
+  return txt.trim().split('\n').map(parseLine).sort(byTime)
+}
+
+const params = new URLSearchParams(location.search)
+
+if (params.has('session')) {
+  query(`@${params.get('session')}:{`).then(showSession, console.warn) 
+} else {
+  query('"1/anything-to-declare","pass":true').then(allLogs => {
+    const uniqLogs = [...new Map(allLogs.map(l => [l.session, l])).values()]
+    document.querySelector('h2').innerHTML = `List <i>${uniqLogs.length} found<i>`
+    document.querySelector('section').innerHTML = uniqLogs
+      .map(log => `<div><a href="${location.pathname}?session=${log.session}">${log.name} <i>(${log.session})</i></a>${Math.round((Date.now() - log.time)/1000)}</div>`)
       .join('\n')
-
-    console.log(window.metrics = metrics)
   })
+}
 
 </script>
 </body>
