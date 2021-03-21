@@ -304,7 +304,7 @@ async function loadQuest(quest) {
   for (const e of exercises) {
     const next = exercises[e.index + 1]
     if (!next) break
-    if (!localStorage[next.key]) break
+    if (!cache.get(next.key)) break
     e.skip()
     currentExercise = next
   }
@@ -314,6 +314,12 @@ async function loadQuest(quest) {
   scrollToElement(currentExercise.container)
 }
 
-loadQuest(1)</script>
+loadQuest(1)
+/*
+
+TODO:
+- move title numbers if window is too small
+*/
+</script>
 </body>
 </html>
