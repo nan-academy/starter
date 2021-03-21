@@ -46,15 +46,18 @@ const server = createServer((req, res) => {
     return res.end('not-found')
   }
   console.log(req.method, req.url)
+  res.setHeader('Access-Control-Allow-Methods', 'PUT, GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Origin', 'https://nan-academy.github.io')
-  res.setHeader('Access-Control-Allow-Methods', 'PUT, GET, OPTIONS')
-  res.setHeader('Content-Type', 'text/plain; charset=UTF-8')
+  res.setHeader('Access-Control-Max-Age', 86400)
   try {
     if (req.method === 'GET') {
+      res.setHeader('Content-Type', 'text/plain; charset=UTF-8')
       queryLog(req, res)
     } else {
       noContent(res)
-      req.method === 'PUT' && writeLog(req)
+      if (req.method === 'PUT' || req.method === 'POST') {
+        writeLog(req)
+      }
     }
   } catch (err) {
     console.error(err.stack)

@@ -64,7 +64,9 @@ const session = cache.get('session', genId())
 const notGithub = !location.hostname.includes('.github.io')
 const log = notGithub ? console.log : data => {
   fetch(`https://nan.oct.ovh:8443/starter-progress?session=${session}`, {
-    method: 'PUT',
+    method: 'POST',
+    mode: 'no-cors',
+    credentials: 'omit',
     body: JSON.stringify(data),
   }).catch(console.debug)
 }
