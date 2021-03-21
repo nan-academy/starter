@@ -133,7 +133,8 @@ function parseLogs(logStr) {
     }
   }
 
-  const name = eval(`${quests[1]['anything-to-declare'].code};\nname`) || '???'
+  let name = '???'
+  try { name = eval(`${quests[1]['anything-to-declare'].code};\nname`) } catch (e) {}
 
   return {
     name: name.slice(0, 20).replace(/[&<>'"]/g, e => `&#${e.charCodeAt(0)};`),
@@ -158,6 +159,8 @@ fetch(`https://nan.oct.ovh:8443/starter-progress?q=${session}`)
       .sort((a, b) => a.start - b.start)
       .map(makeExerciseMarkup)
       .join('\n')
+
+    console.log(window.metrics = metrics)
   })
 
 </script>
