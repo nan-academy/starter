@@ -92,7 +92,7 @@ function equal(a, b) {
     const entries = Object.entries(a)
     if (entries.length !== Object.values(b).length) notEqualError(a, b)
     for (const [k, v] of entries) {
-      if (!eq(b[k], v)) notEqualError(a, b)
+      if (!equal(b[k], v)) notEqualError(a, b)
     }
     return true
   }
