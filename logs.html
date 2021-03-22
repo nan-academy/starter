@@ -26,7 +26,12 @@ body {
   line-height: 1.5;
   word-wrap: break-word;
   color: #24292e;
+  padding-right: 16px;
+  padding-left: 16px;
+  margin: 32px auto;
+  max-width: 1012px;
 }
+* { box-sizing: border-box }
 
 h1, h2 {
   padding-bottom: 0.3em;
@@ -47,15 +52,36 @@ h3 {
   justify-content: space-between;
 }
 
+footer {
+  text-align: right;
+  padding-top: 16px;
+  border-top: 1px #e1e4e8 solid;
+  color: #586069;
+}
+a {
+  color: #0366d6;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+a:active, a:hover {
+  outline-width: 0;
+}
+
   </style>
 
 </head>
 <body>
-<h1>💾 Logs</h1>
+<h1><a href="/logs">💾</a> Logs</h1>
 <h2 id="name-">Loadings...</h2>
 <section>
 </section>
+<footer>
+This site is open source. <a href="https://github.com/nan-academy/starter/edit/master/logs.html">Improve this page</a>.
+</footer>
 <script type="module">
+const relatime = e=>{for(let[u,a]of Object.entries({year:31536e6,month:2628e6,day:864e5,hour:36e5,minute:6e4,second:1e3})){if(Math.abs(e)>a||a===1e3){return new Intl.RelativeTimeFormat('en',{style:'narrow'}).format(~~(e/a),u)}}}
 const cache = {
   get: (k, v) => localStorage[`starter@${k}`] || cache.set(k, v),
   set: (k, v) => v == null
@@ -127,12 +153,12 @@ function parseLogs(logs) {
     }
 
     attempt.deviation = attempt.elapsed - average
+    e.code = attempt.code
     e.attempts.push(attempt)
     if (attempt.pass) {
       prevTime = e.end = attempt.time
       e.elapsed = e.end - e.start
       e.pass = true
-      e.code = attempt.code
       e.active += total(e.attempts.map(a => Math.min(a.elapsed, average*1.5)))
     }
   }
@@ -143,14 +169,20 @@ function parseLogs(logs) {
     name: getName(quests[1]['anything-to-declare'].code),
     session: logs[0]?.session || '???',
     quests,
-    attemptAverage: Math.round(average / 1000),
-    elapsedAverage: Math.round(normalizedAverage(Object.values(quests[1]).map(e => e.elapsed))/1000),
-    activeAverage: Math.round(normalizedAverage(Object.values(quests[1]).map(e => e.active))/1000),
+    attemptAverage: relatime(average),
+    elapsedAverage: relatime(normalizedAverage(Object.values(quests[1]).map(e => e.elapsed))),
+    activeAverage: relatime(normalizedAverage(Object.values(quests[1]).map(e => e.active))),
   }
 }
 
 const makeExerciseMarkup = exercise => {
-  return `<h3>${exercise.name} <b>${Math.round(exercise.active/1000)}s/<i>${exercise.attempts.length}</i></b></h3>`
+  return `
+    <h3>
+      ${exercise.name}
+      <b>${relatime(exercise.active).slice(3, -1)} / ${exercise.attempts.length}</b>
+    </h3>
+    <pre>${exercise.code}</pre>
+  `
 }
 
 const showSession = (strLogs) => {
@@ -168,7 +200,7 @@ const getName = code => {
   try {
     return eval(`${code};\nname`)
       .slice(0, 20)
-      .replace(/[&<>'"]/g, e => `&#${e.charCodeAt(0)};`)
+      .replace(/[&<>'"]/g, e => `&#${e.charCodeAt(0)};`) || '???'
   } catch {
     return '???'
   }
@@ -192,7 +224,7 @@ if (params.has('session')) {
     const uniqLogs = [...new Map(allLogs.map(l => [l.session, l])).values()]
     document.querySelector('h2').innerHTML = `List <i>${uniqLogs.length} found<i>`
     document.querySelector('section').innerHTML = uniqLogs
-      .map(log => `<div><a href="${location.pathname}?session=${log.session}">${getName(log.code)} <i>(${log.session})</i></a>${Math.round((Date.now() - log.time)/1000)}</div>`)
+      .map(log => `<div><a href="${location.pathname}?session=${log.session}">${getName(log.code)} <em>${log.session}</em></a> <i>${relatime(log.time - Date.now())}<i></div>`)
       .join('\n')
   })
 }
