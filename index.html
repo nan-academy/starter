@@ -160,7 +160,7 @@ const rootStyle = document.getElementById('root-style')
 
 // generate style
 rootStyle.innerHTML += [...Array(30).keys()].map(n => `
-.exercise:nth-child(${n}) h2::before {
+.exercise:nth-of-type(${n}) h2::before {
   content: '${String(n).padStart(2, '0')} ';
 }`).join('')
 
