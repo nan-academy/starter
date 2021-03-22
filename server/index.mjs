@@ -10,6 +10,15 @@ const APPEND = { autoClose: false, flags:'a' }
 const PIPE = { stdio: [null, 'pipe', process.stderr] }
 const logError = err => err && console.error(err)
 const noContent = res => (res.statusCode = 204, res.end())
+const hash = str => {
+  let h = 0
+  for (const c of str) {
+    h = ((h << 5) - h) + c.charCodeAt(0)
+    h = h & h
+  }
+  h = new DataView(new Int32Array([h]).buffer).getUint32()
+  return str.slice(0, 6) + h.toString(36).padStart(6, '0').slice(1)
+}
 const writeLog = req => {
   const url = new URL(req.url, `http://${req.headers.host}`)
   const path = url.pathname.slice(1)
@@ -19,7 +28,7 @@ const writeLog = req => {
   req.setEncoding('utf8')
   req.once('data', data => {
     const payload = data.slice(0, 8192).replace(/\r?\n|\r/g, '').trim()
-    log.write(`${Date.now()}@${session}:${payload}\n`)
+    log.write(`${Date.now()}@${hash(session)}:${payload}\n`)
   })
 }
 
