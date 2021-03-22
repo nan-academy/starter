@@ -45,7 +45,9 @@ h2 i { color: #aaa }
 h2 {
   font-size: 1.5em;
   border-bottom: 1px solid #eaecef;
+  margin-top: 48px;
 }
+section h2 { margin-top: 96px }
 
 h3 {
   display: flex;
@@ -119,30 +121,24 @@ const normalizedAverage = arr => {
 
 const M = 60000
 const byTime = (a, b) => a.time - b.time
-function parseLogs(logs) {
+function toQuest(logs, time = 0) {
 
   // compute normalized average attempt time
-  let prevTime = 0
   for (const log of logs) {
-    log.elapsed = Math.min(log.time - prevTime, 90*M)
-    prevTime = log.time
+    log.elapsed = Math.min(log.time - time, 90*M)
+    time = log.time
   }
 
   const average = normalizedAverage(logs.map(log => log.elapsed))
 
-  // TODO: decouple timings computation and structure
-  //       and make a quest per quest average hestimation
-
   // generate structure
-  prevTime = 0
-  const quests = {}
-  for (const { exercise, quest, session, ...attempt } of logs) {
-    const q = quests[quest] || (quests[quest] = {})
-    const e = q[exercise] || (q[exercise] = {
-      quest,
+  time = 0
+  const exercises = {}
+  for (const { exercise, session, ...attempt } of logs) {
+    const e = exercises[exercise] || (exercises[exercise] = {
       name: exercise,
       attempts: [],
-      start: Math.max(prevTime, attempt.time - average*2),
+      start: Math.max(time, attempt.time - average*2),
       active: 0,
     })
 
@@ -156,22 +152,20 @@ function parseLogs(logs) {
     e.code = attempt.code
     e.attempts.push(attempt)
     if (attempt.pass) {
-      prevTime = e.end = attempt.time
+      time = e.end = attempt.time
       e.elapsed = e.end - e.start
       e.pass = true
       e.active += total(e.attempts.map(a => Math.min(a.elapsed, average*1.5)))
     }
   }
 
-  // TODO: fetch quest, parse title and list exercise with 0 attempts
-
   return {
-    name: getName(quests[1]['anything-to-declare'].code),
-    session: logs[0]?.session || '???',
-    quests,
-    attemptAverage: relatime(average),
-    elapsedAverage: relatime(normalizedAverage(Object.values(quests[1]).map(e => e.elapsed))),
-    activeAverage: relatime(normalizedAverage(Object.values(quests[1]).map(e => e.active))),
+    time,
+    exercises: Object.values(exercises).sort((a, b) => a.start - b.start),
+    // name: getName(quests[1]['anything-to-declare'].code),
+    // attemptAverage: relatime(average),
+    // elapsedAverage: relatime(normalizedAverage(Object.values(quests[1]).map(e => e.elapsed))),
+    // activeAverage: relatime(normalizedAverage(Object.values(quests[1]).map(e => e.active))),
   }
 }
 
@@ -184,16 +178,30 @@ const makeExerciseMarkup = exercise => {
     <pre>${exercise.code}</pre>
   `
 }
-
+const count = n => [...Array(n+1).keys()].slice(1)
 const showSession = (strLogs) => {
-  const metrics = parseLogs(strLogs)
-  document.querySelector('h2').innerHTML = `${metrics.name} <i>${params.get('session')}<i>`
-  document.querySelector('section').innerHTML = Object.values(metrics.quests[1])
-    .sort((a, b) => a.start - b.start)
-    .map(makeExerciseMarkup)
+  const maxQuest = strLogs.reduce((max, l) => Math.max(max, l.quest), 0)
+  const quests = count(maxQuest)
+    .reduce((acc, q, i) => [
+      ...acc,
+      {
+        quest: q,
+        ...toQuest(strLogs.filter(l => l.quest == q), acc[i-1]?.time),
+      }
+    ], [])
+
+  if (!quests.length) return document.querySelector('h2').textContent = 'empty session'
+
+  const name = getName(quests[0].exercises.find(ex => ex.name === 'anything-to-declare')?.code)
+  document.querySelector('h2').innerHTML = `${name} <i>${params.get('session')}<i>`
+  document.querySelector('section').innerHTML = quests
+    .flatMap(({ quest, exercises }) => [
+      `<h2>Quest ${String(quest).padStart(2, '0')}</h2>`,
+      ...exercises.map(makeExerciseMarkup),
+    ])
     .join('\n')
 
-  console.log(window.metrics = metrics)
+  console.log(window.quests = quests)
 }
 
 const getName = code => {
@@ -228,6 +236,29 @@ if (params.has('session')) {
       .join('\n')
   })
 }
+
+/* TODO:
+
+- decouple timings computation and structure
+  and make a quest per quest average hestimation
+
+- fetch quest, parse title and list exercise with 0 attempts
+
+Relative stuff I would like to show
+- % code size compared to average
+- % time send
+- % attempts
+
+Overall info on exercises:
+- average time
+- average retries
+- maximum retries
+- maximum time
+- most average solution (the one that's closests to all the others)
+- 3 of most original ones
+- the golfer (shortest one)
+
+*/
 
 </script>
 </body>
