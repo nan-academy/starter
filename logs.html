@@ -132,8 +132,8 @@ const normalizedAverage = arr => {
 
   // get a large median range (1/4)
   // this trim of the extremes values
-  const padding = Math.ceil(ordered.length / 4)
-  const range = ordered.slice(padding, -padding)
+  const padding = Math.floor(ordered.length / 4)
+  const range = padding ? ordered.slice(padding, -padding) : ordered
 
   // compute the mean of the rest
   return mean(range)
@@ -142,24 +142,16 @@ const normalizedAverage = arr => {
 const M = 60000
 const byTime = (a, b) => a.time - b.time
 function toQuest(logs, time = 0) {
-
-  // compute normalized average attempt time
-  for (const log of logs) {
-    log.elapsed = Math.min(log.time - time, 90*M)
-    time = log.time
-  }
-
   const average = normalizedAverage(logs.map(log => log.elapsed))
 
   // generate structure
-  time = 0
   const exercises = {}
   for (const { exercise, session, ...attempt } of logs) {
     const e = exercises[exercise] || (exercises[exercise] = {
       name: exercise,
       attempts: [],
       start: Math.max(time, attempt.time - average*2),
-      active: 0,
+      active: Math.min(attempt.time - time, average*1.5),
     })
 
     if (e.pass) {
@@ -182,10 +174,6 @@ function toQuest(logs, time = 0) {
   return {
     time,
     exercises: Object.values(exercises).sort((a, b) => a.start - b.start),
-    // name: getName(quests[1]['anything-to-declare'].code),
-    // attemptAverage: relatime(average),
-    // elapsedAverage: relatime(normalizedAverage(Object.values(quests[1]).map(e => e.elapsed))),
-    // activeAverage: relatime(normalizedAverage(Object.values(quests[1]).map(e => e.active))),
   }
 }
 
@@ -198,16 +186,18 @@ const makeExerciseMarkup = ({ name, active, attempts, code, pass }) => `
 `
 
 const count = n => [...Array(n+1).keys()].slice(1)
-const showSession = (strLogs) => {
-  const maxQuest = strLogs.reduce((max, l) => Math.max(max, l.quest), 0)
-  const quests = count(maxQuest)
-    .reduce((acc, q, i) => [
-      ...acc,
-      {
-        quest: q,
-        ...toQuest(strLogs.filter(l => l.quest == q), acc[i-1]?.time),
-      }
-    ], [])
+const showSession = (logs) => {
+  // compute normalized average attempt time and max quest
+  let time = 0, maxQuest = 0
+  for (const log of logs) {
+    maxQuest = Math.max(maxQuest, log.quest)
+    log.elapsed = Math.min(log.time - time, 90*M)
+    time = log.time
+  }
+  const quests = count(maxQuest).reduce((acc, q, i) => [
+    ...acc,
+    { quest: q, ...toQuest(logs.filter(l => l.quest == q), acc[i-1]?.time) },
+  ], [])
 
   if (!quests.length) return document.querySelector('h2').textContent = 'empty session'
 
@@ -221,7 +211,7 @@ const showSession = (strLogs) => {
     .join('\n')
 
   const solutions = {}
-  for (const { exercise, code, pass } of strLogs.sort((a, b) => a.time - b.time)) {
+  for (const { exercise, code, pass } of logs.sort((a, b) => a.time - b.time)) {
     const s = solutions[exercise] || (solutions[exercise] = {
       attempts: [],
       current: 0,
