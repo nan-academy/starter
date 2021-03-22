@@ -262,6 +262,8 @@ async function loadQuest(quest) {
   const txt = await res.text()
   const dom = new DOMParser().parseFromString(txt, 'text/html')
 
+  cache.set('at', Math.max(Number(cache.get('at')), quest))
+
   while (root.firstChild) root.removeChild(root.firstChild)
 
   let exercise, state
@@ -318,7 +320,7 @@ async function loadQuest(quest) {
   scrollToElement(currentExercise.container)
 }
 
-loadQuest(1)
+loadQuest(Number(cache.get('at', '1')))
 /*
 
 TODO:
