@@ -71,6 +71,21 @@ a:active, a:hover {
   outline-width: 0;
 }
 
+pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: #f6f8fa;
+  border-radius: 3px;
+  border: 1px dashed transparent;
+}
+
+pre:not(.pass) {
+  color: #bd305e;
+  border: 1px dashed #bd305e;
+}
+
   </style>
 
 </head>
@@ -169,15 +184,14 @@ function toQuest(logs, time = 0) {
   }
 }
 
-const makeExerciseMarkup = exercise => {
-  return `
-    <h3>
-      ${exercise.name}
-      <b>${relatime(exercise.active).slice(3, -1)} / ${exercise.attempts.length}</b>
-    </h3>
-    <pre>${exercise.code}</pre>
-  `
-}
+const makeExerciseMarkup = ({ name, active, attempts, code, pass }) => `
+  <h3>
+    ${name}
+    <b>${relatime(active).slice(3, -1)} / <span id="${name}" class="solution">${attempts.length}</span></b>
+  </h3>
+  <pre id="${name}-pre" class="${pass ? 'pass' : ''}">${code}</pre>
+`
+
 const count = n => [...Array(n+1).keys()].slice(1)
 const showSession = (strLogs) => {
   const maxQuest = strLogs.reduce((max, l) => Math.max(max, l.quest), 0)
@@ -201,6 +215,36 @@ const showSession = (strLogs) => {
     ])
     .join('\n')
 
+  const solutions = {}
+  for (const { exercise, code, pass } of strLogs.sort((a, b) => a.time - b.time)) {
+    const s = solutions[exercise] || (solutions[exercise] = {
+      attempts: [],
+      current: 0,
+    })
+
+    s.attempts.push({ code, pass })
+    s.current = s.attempts.length - 1
+  }
+
+  function handleWeel(e) {
+    if (e.deltaX || !e.deltaY) return
+    const direction = Math.sign(e.deltaY)
+    const solution = solutions[e.target.id]
+    if (!solution) return
+    e.preventDefault()
+    const index = solution.current + direction
+    const attempt = solution.attempts[index]
+    if (!attempt) return
+    solution.current = index
+    const pre = solution.pre || (solution.pre = document.getElementById(`${e.target.id}-pre`))
+    pre.classList.toggle('pass', attempt.pass)
+    pre.textContent = attempt.code
+    e.target.textContent = index + 1
+  }
+
+  for (const node of document.getElementsByClassName('solution')) {
+    node.textContent === '1' || node.addEventListener('wheel', handleWeel)
+  }
   console.log(window.quests = quests)
 }
 
