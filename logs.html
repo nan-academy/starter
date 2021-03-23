@@ -57,6 +57,7 @@ h3 {
 footer {
   text-align: right;
   padding-top: 16px;
+  padding-bottom: 128px;
   border-top: 1px #e1e4e8 solid;
   color: #586069;
 }
@@ -84,6 +85,18 @@ pre {
 pre:not(.pass) {
   color: #bd305e;
   border: 1px dashed #bd305e;
+}
+
+
+span.solution {
+  display: inline-block;
+  min-width: 3em;
+  background: #f6f8fa;
+  color: #3e4f60;
+  border-radius: 5px;
+  text-align: center;
+  border: 1px solid #cbd6e1;
+  line-height: 1.35;
 }
 
 .scroll-into {
@@ -180,7 +193,7 @@ function toQuest(logs, time = 0) {
 const makeExerciseMarkup = ({ name, active, attempts, code, pass }) => `
   <h3>
     ${name}
-    <b>${relatime(active).slice(3, -1)} / <span id="${name}" class="solution">${attempts.length}</span></b>
+    <b>${relatime(active).slice(3, -1)} <span id="${name}" class="solution">${attempts.length}</span></b>
   </h3>
   <pre id="${name}-pre" class="${pass ? 'pass' : ''}">${code}</pre>
 `
