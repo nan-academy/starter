@@ -26,7 +26,7 @@ const quests = (await readDir('quests')).filter((name) =>
   /^\d+\.md$/.test(name),
 )
 
-for (const name of quests) {
+for (const name of quests.sort()) {
   const mdAst = parseMD(await readFile(`quests/${name}`))
   await run({ mdAst, getSolution, equal, exit })
 }
