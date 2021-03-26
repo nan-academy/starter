@@ -258,7 +258,8 @@ function prepareEditor(exercise, exercises) {
 }
 
 async function loadQuest(quest) {
-  const res = await fetch(`quests/${quest}`)
+  quest === 6 && (quest++) // skip dom quest
+  const res = await fetch(`quests/${String(quest).padStart(2, '0')}`)
   const txt = await res.text()
   const dom = new DOMParser().parseFromString(txt, 'text/html')
 
