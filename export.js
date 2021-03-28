@@ -1,4 +1,8 @@
 import { readdirSync, readFileSync } from 'fs'
+import { mkdir, writeFile } from 'fs/promises'
+
+import parseMD from './lib/mdast.js'
+import { textContent } from './lib/run.js'
 
 const quests = readdirSync('quests').filter(f => f.endsWith('.md')).sort()
 
@@ -26,16 +30,31 @@ for (const name of quests) {
   const questName = normalize(questTitle)
   const language = type[name] === 'dom' ? 'dom' : 'js'
   const exerciseProcessing = parts.map(async (md, index) => {
-    const [subject, tests] = md.split('\n### Tests')
+    const [subject, testsStr] = md.split('\n### Tests')
     const exerciseTitle = subject.split('\n', 1)[0]
     const exerciseName = normalize(exerciseTitle)
     const isBonus = exerciseTitle.startsWith('🌟')
 
-    // mkdir -p ./output/${exerciseName}
-    // writeFile(`./output/${exerciseName}/README.md`, `## ${subject}`, 'utf8')
+    await mkdir(`../public/subjects/${exerciseName}`,{recursive:true})
+    subject.trim().includes('\n')
+     && (await writeFile(`../public/subjects/${exerciseName}/README.md`, `## ${subject}`, 'utf8'))
 
     // generate test file
-    // save it
+    let test
+    const tests = []
+    for (const node of parseMD(testsStr || '2').children) {
+      if (node.type === 'heading' && node.depth === 4) {
+        test && tests.push(test)
+        test = { description: textContent(node) }
+      } else if (test && node.type === 'code') {
+        test.code = textContent(node)
+      }
+    }
+
+    test && tests.push(test)
+
+    tests.length
+      && (await writeFile(`../public/js/tests/${exerciseName}.json`, JSON.stringify(tests, null, 2)))
 
     const ext = type[name] === 'node' ? 'mjs' : 'js'
     return {
@@ -83,15 +102,23 @@ const INSERT_RELATIONSHIP_VALUES = questsData.flatMap(quest => [
     `(${quest.id}, ${exercise.id}, '{"difficulty":1}'::jsonb, '${exercise.name}', ${exercise.index+1}),`)
 ]).join('\n  ')
 
+const piscineAttrs = {
+  capacity:400,
+  eventDuration:36960,
+  eventStartDelay:240,
+  registrationDuration:43200,
+  displayName: "Discovery Piscine",
+}
+
 const SQL = `
 -- cleanup
-DELETE FROM public.object WHERE id >= ${START} && id <= ${start};
+DELETE FROM public.object WHERE id >= ${START} AND id <= ${start};
 
 -- insert object
 INSERT INTO public.object (id, name, type, status, attrs, "childrenAttrs") VALUES
 
   -- Discovery Piscine
-  (${start}, 'discovery-piscine', 'piscine', 'online', {"displayName":"Discovery Piscine"}'::jsonb, '{}'::jsonb),
+  (${start}, 'discovery-piscine', 'piscine', 'online', '${JSON.stringify(piscineAttrs)}'::jsonb, '{}'::jsonb),
   ${INSERT_OBJECT_VALUES.slice(0, -1)};
 
 -- insert relationships
