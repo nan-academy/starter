@@ -46,5 +46,5 @@ prettier -w \
   --arrow-parens always \
   --prose-wrap always \
   --print-width 80 \
-  *.md
+  quests/*.md
 ```
