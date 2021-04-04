@@ -272,7 +272,7 @@ const getName = code => {
 
 const query = async q => {
   const search = new URLSearchParams({ q })
-  const res = await fetch(`https://nan.oct.ovh:8443/starter-progress?${search}`)
+  const res = await fetch(`https://7.oct.ovh:8443/starter-progress?${search}`)
   const txt = await res.text()
   return txt.trim().split('\n').map(parseLine).sort(byTime)
 }
