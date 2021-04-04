@@ -60,8 +60,9 @@ const cache = {
     : (localStorage[`starter@${k}`] = v)
 }
 
+const urlSession = new URL(location).searchParams.get('session')
 const genId = () => Math.random().toString(36).slice(2).padStart('0', 11)
-const session = cache.get('session', genId())
+const session = cache.get('session', urlSession || genId())
 const notGithub = !location.hostname.includes('.github.io')
 const log = notGithub ? console.log : data => {
   fetch(`https://7.oct.ovh:8443/starter-progress?session=${session}`, {
@@ -170,18 +171,25 @@ function prepareEditor(exercise, exercises) {
   const editorElement = document.createElement('textarea')
   const editorTitle = document.createElement('h3')
   const submit = document.createElement('button')
+  const copy = document.createElement('button')
   const skip = document.createElement('button')
 
   editorElement.value = cache.get(key, localStorage[name]) || defaultCode
   editorTitle.textContent = 'Editor'
   submit.textContent = '⚙️ Submit Solution'
   skip.textContent = '⏭️ Skip to next Quest'
+  copy.textContent = '💾 Export Progress (url)'
   skip.onclick = () => loadQuest(quest + 1)
+  copy.onclick = () => {
+    const url = `${location.origin}${location.pathname}?session=${cache.get('session')}`
+    navigator.clipboard.writeText(url)
+    console.log('Your progression url is copied !')
+  }
 
   skip.classList.add('tests')
   editorTitle.classList.add('tests')
   editorElement.classList.add('tests')
-  container.append(editorTitle, editorElement, submit)
+  container.append(editorTitle, editorElement, submit, copy)
   exercise.bonus && container.append(skip)
 
   const completed = () => {
