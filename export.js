@@ -111,19 +111,26 @@ const piscineAttrs = {
 }
 
 const SQL = `
--- cleanup
-DELETE FROM public.object WHERE id >= ${START} AND id <= ${start};
-
 -- insert object
 INSERT INTO public.object (id, name, type, status, attrs, "childrenAttrs") VALUES
 
   -- Discovery Piscine
   (${start}, 'discovery-piscine', 'piscine', 'online', '${JSON.stringify(piscineAttrs)}'::jsonb, '{}'::jsonb),
-  ${INSERT_OBJECT_VALUES.slice(0, -1)};
+  ${INSERT_OBJECT_VALUES.slice(0, -1)}
+
+ON CONFLICT ON CONSTRAINT "object_pkey"
+DO UPDATE SET
+  name = EXCLUDED.name,
+  type = EXCLUDED.type,
+  status = EXCLUDED.status,
+  attrs = EXCLUDED.attrs;
 
 -- insert relationships
 INSERT INTO public.object_child ("parentId", "childId", attrs, key, index) VALUES
-  ${INSERT_RELATIONSHIP_VALUES.slice(0, -1)};
+  ${INSERT_RELATIONSHIP_VALUES.slice(0, -1)}
+
+ON CONFLICT ON CONSTRAINT "object_child_parentId_key_key"
+DO NOTHING;
 `
 
 console.log(SQL)
