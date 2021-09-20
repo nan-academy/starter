@@ -281,6 +281,12 @@ async function loadQuest(quest) {
     if (node.tagName === 'H1') {
       node.innerHTML = `<em>${String(quest).padStart(2, '0')}</em> ${node.textContent}`
       node.id && root.append(node)
+      if (quest > 1) {
+        const prevBtn = document.createElement('button')
+        prevBtn.textContent = '⏮️ Load previous exercises'
+        prevBtn.onclick = () => loadQuest(quest - (1 + (quest === 7)))
+        node.insertAdjacentElement('afterend', prevBtn)
+      }
     } else if (node.tagName === 'H2') {
       state = 'subject'
       const name = node.id.replace(/-+/g, ' ').trim().replace(/\s+/g, '-')
